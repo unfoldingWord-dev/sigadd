@@ -25,3 +25,9 @@ Perform a post request to wherever the script is listening (127.0.0.1:88 in this
 ```
 curl -X POST --data-urlencode "data=<data above with quotes escaped and no newlines>" http://127.0.0.1:88
 ```
+
+e.g.
+
+```
+curl -X POST --data-urlencode "data={\"content\":\"https://api.unfoldingword.org/obs/txt/1/en/obs-en.json?date_modified=20150210\",\"sig\":\"MGYCMQDN7R4lTqR579DwbEQjGa7gBDlQrqv84fv7EPJoTC7XwYK0H2ODQ3UQL5QaOiE2+h0CMQC0JPChVkm8FbX+OhFNFl8D1bp96dMpdE6XOchCE0j/tDACWIQGV/icjbD4m5yb2Vk=\",\"slug\":\"uW\"}" http://127.0.0.1:88
+```
