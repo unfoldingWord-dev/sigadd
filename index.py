@@ -4,6 +4,7 @@ import os
 import sys
 import json
 import requests
+import time
 import ipaddress
 import urllib2
 import base64
@@ -15,14 +16,14 @@ app = Flask(__name__)
 api_root = '/var/www/vhosts/api.unfoldingword.org/httpdocs'
 api_base = 'https://api.unfoldingword.org'
 pki_base = 'https://pki.unfoldingword.org'
-working_dir = '.sigadd_temp/'
+working_dir = '.sigadd_temp'
 
 
 @app.route("/", methods=['GET', 'POST'])
 def index():
 
     if request.method == 'GET':
-        return json.dumps({'return': 'OK'})
+        return json.dumps({'ok':''})
 
     elif request.method == 'POST':
         # load payload
@@ -46,18 +47,25 @@ def index():
 
         # validate api base
         if not content.startswith(api_base):
-            return json.dumps({'return': 'Error: Wrong content URL.'})
+            return json.dumps({'error': 'Wrong content URL.'})
         path = content.split(api_base)[1]
         path = path.split('?')[0]
 
         check = checkSig(path, sig, slug)
         if not check:
-            return json.dumps({'return': 'Error: Sig does not match content.'})
+            return json.dumps({'error': 'Sig does not match content.'})
 
         addSig(path, sig, slug)
-        return json.dumps({'return': 'OK'})
+        return json.dumps({'ok':''})
 
 def checkSig(path, sig, slug):
+    '''
+    Checks if a signature is valid
+    :param path: the path to the content that was signed
+    :param sig: the signature that will be validated
+    :param slug: the SI slug
+    :return:
+    '''
     vk_url = '{0}/si/{1}-vk.pem'.format(pki_base, slug)
     if slug == 'uW':
         vk_url = '{0}/{1}-vk.pem'.format(pki_base, slug)
@@ -72,11 +80,12 @@ def checkSig(path, sig, slug):
     if not os.path.exists(working_dir):
         os.makedirs(working_dir)
 
-    keyf = open(working_dir+'pub.pem', 'w')
+    ts = time.time()
+    keyf = open('{0}/{1}.pem'.format(working_dir, ts), 'w')
     keyf.write(vk_content)
     keyf.close()
 
-    sigf = open(working_dir+'content.sig', 'w')
+    sigf = open('{0}/{1}.sig'.format(working_dir, ts), 'w')
     sigf.write(sig)
     sigf.close()
 
@@ -86,14 +95,20 @@ def checkSig(path, sig, slug):
     com = Popen(command, shell=False, stdin=PIPE, stdout=PIPE, stderr=PIPE)
     out, err = com.communicate()
 
-    return True
+    # cleanup
+    os.remove(keyf.name)
+    os.remove(sigf.name)
+
+    return not err
 
 def parseSI(si_content):
     '''
+    @deprecated
     Splits a SI (Signing Identity) into it's three components.
     1. Public key
     2. Organization info
     3. Signature
+    :param si_content: the contents of the SI file that was downloaded
     '''
     lines = si_content.split('\n')
     pk = ''
@@ -114,6 +129,12 @@ def parseSI(si_content):
     return {'pk':base64.b64decode(pk), 'org':base64.b64decode(org), 'sig':base64.b64decode(sig)}
 
 def addSig(path, sig, slug):
+    '''
+    Adds a signature to the list of valid signatures for the content
+    :param path: the path to the signatures file
+    :param sig: the signature to add
+    :param slug: the SI slug
+    '''
     sig_json = json.loads('[]')
     sig_path = '{0}{1}'.format(api_root, path).replace('json', 'sig')
     if os.path.exists(sig_path):
