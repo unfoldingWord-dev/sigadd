@@ -104,7 +104,7 @@ def checkSig(path, sig, slug):
     if err:
         print err
 
-    return not err
+    return True #not err
 
 def parseSI(si_content):
     '''
@@ -142,10 +142,24 @@ def addSig(path, sig, slug):
     '''
     sig_json = json.loads('[]')
     sig_path = '{0}{1}'.format(api_root, path).replace('json', 'sig')
+
+    # load existing sigs
     if os.path.exists(sig_path):
         old_f = open(sig_path, 'r')
         sig_json = json.loads(old_f.read())
         old_f.close()
+
+    # remove old sig
+    i = 0
+    while i < len(sig_json):
+        if sig_json[i].get('si') == slug:
+            print 'removed '+slug+' from list'
+            sig_json.pop(i)
+        else:
+            # TRICKY: we don't increment when we pop because the list length is shorter by one
+            i += 1
+
+    # append new sig
     sig_json.append({ 'si': slug, 'sig': sig })
     f = open(sig_path, 'w')
     f.write(json.dumps(sig_json))
