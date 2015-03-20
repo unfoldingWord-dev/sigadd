@@ -91,13 +91,18 @@ def checkSig(path, sig, slug):
 
     # Use openssl to verify that sig works against content at path
     # TODO: this is not working
-    command = shlex.split('openssl dgst -sha384 -verify '+keyf.name+' -signature '+sigf.name+' '+path)
+    content_path = '{0}{1}'.format(api_root, path)
+    command_str = 'openssl dgst -sha384 -verify '+keyf.name+' -signature '+sigf.name+' '+content_path
+    command = shlex.split(command_str)
     com = Popen(command, shell=False, stdin=PIPE, stdout=PIPE, stderr=PIPE)
     out, err = com.communicate()
 
     # cleanup
     os.remove(keyf.name)
     os.remove(sigf.name)
+
+    if err:
+        print err
 
     return not err
 
