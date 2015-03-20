@@ -76,7 +76,7 @@ def checkSig(path, sig, slug):
         return False
 
     # parse SI
-    # si = parseSI(vk_content)
+    si = parseSI(vk_content)
     if not os.path.exists(working_dir):
         os.makedirs(working_dir)
 
@@ -86,7 +86,7 @@ def checkSig(path, sig, slug):
     keyf.close()
 
     sigf = open('{0}/{1}.sig'.format(working_dir, ts), 'w')
-    sigf.write(sig)
+    sigf.write(si.get('sig'))#sig)
     sigf.close()
 
     # Use openssl to verify that sig works against content at path
@@ -104,11 +104,10 @@ def checkSig(path, sig, slug):
     if err:
         print err
 
-    return not err
+    return out.strip() == 'Verified OK'
 
 def parseSI(si_content):
     '''
-    @deprecated
     Splits a SI (Signing Identity) into it's three components.
     1. Public key
     2. Organization info
