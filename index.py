@@ -104,7 +104,7 @@ def checkSig(path, sig, slug):
     if err:
         print err
 
-    return True #not err
+    return not err
 
 def parseSI(si_content):
     '''
