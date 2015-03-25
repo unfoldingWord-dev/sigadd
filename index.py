@@ -5,7 +5,6 @@ import sys
 import json
 import requests
 import time
-import ipaddress
 import urllib2
 import base64
 import shlex
