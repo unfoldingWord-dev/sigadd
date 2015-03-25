@@ -51,14 +51,14 @@ def index():
         path = content.split(api_base)[1]
         path = path.split('?')[0]
 
-        check = checkSig(path, sig, slug)
+        check = checkSig(content, path, sig, slug)
         if not check:
             return json.dumps({'error': 'Sig does not match content.'})
 
         addSig(path, sig, slug)
         return json.dumps({'ok':''})
 
-def checkSig(path, sig, slug):
+def checkSig(content_url, path, sig, slug):
     '''
     Checks if a signature is valid
     :param path: the path to the content that was signed
@@ -72,27 +72,37 @@ def checkSig(path, sig, slug):
     try:
         f = urllib2.urlopen(vk_url)
         vk_content = f.read()
+        f.close()
     except Exception as e:
+        print e
         return False
 
-    # parse SI
-    si = parseSI(vk_content)
     if not os.path.exists(working_dir):
         os.makedirs(working_dir)
 
     ts = time.time()
+
     keyf = open('{0}/{1}.pem'.format(working_dir, ts), 'w')
     keyf.write(vk_content)
     keyf.close()
 
     sigf = open('{0}/{1}.sig'.format(working_dir, ts), 'w')
-    sigf.write(si.get('sig'))#sig)
+    sigf.write(base64.b64decode(sig))
     sigf.close()
 
-    # Use openssl to verify that sig works against content at path
-    # TODO: this is not working
-    content_path = '{0}{1}'.format(api_root, path)
-    command_str = 'openssl dgst -sha384 -verify '+keyf.name+' -signature '+sigf.name+' '+content_path
+    # download the content that was signed
+    contentf = open('{0}/{1}.content'.format(working_dir, ts), 'w')
+    try:
+        f = urllib2.urlopen(content_url)
+        contentf.write(f.read())
+        f.close()
+    except Exception as e:
+        print e
+        return False
+    contentf.close()
+
+    # Use openssl to verify signature
+    command_str = 'openssl.exe dgst -sha384 -verify '+keyf.name+' -signature '+sigf.name+' '+contentf.name
     command = shlex.split(command_str)
     com = Popen(command, shell=False, stdin=PIPE, stdout=PIPE, stderr=PIPE)
     out, err = com.communicate()
@@ -100,6 +110,7 @@ def checkSig(path, sig, slug):
     # cleanup
     os.remove(keyf.name)
     os.remove(sigf.name)
+    os.remove(contentf.name)
 
     if err:
         print err
@@ -112,7 +123,7 @@ def parseSI(si_content):
     1. Public key
     2. Organization info
     3. Signature
-    :param si_content: the contents of the SI file that was downloaded
+    :param si_content: the contents of the SI file
     '''
     lines = si_content.split('\n')
     pk = ''
