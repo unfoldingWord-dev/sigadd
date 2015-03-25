@@ -11,6 +11,7 @@ import base64
 import shlex
 from flask import Flask, request, abort
 from subprocess import *
+from os.path import basename
 
 app = Flask(__name__)
 api_root = '/var/www/vhosts/api.unfoldingword.org/httpdocs'
@@ -162,18 +163,29 @@ def addSig(path, sig, slug):
 
     # remove old sig
     i = 0
+    no_change = False
     while i < len(sig_json):
         if sig_json[i].get('si') == slug:
-            sig_json.pop(i)
+            if sig_json[i].get('sig') == sig:
+                no_change = True
+                # TRICKY: we don't pop so we must increment
+                i += 1
+            else:
+                print '-- '+slug+'+'+basename(path)+' '+sig_json[i].get('sig')
+                sig_json.pop(i)
         else:
             # TRICKY: we don't increment when we pop because the list length is shorter by one
             i += 1
 
     # append new sig
-    sig_json.append({ 'si': slug, 'sig': sig })
-    f = open(sig_path, 'w')
-    f.write(json.dumps(sig_json))
-    f.close()
+    if not no_change:
+        sig_json.append({ 'si': slug, 'sig': sig })
+        f = open(sig_path, 'w')
+        f.write(json.dumps(sig_json))
+        f.close()
+        print '++ '+slug+'+'+basename(path)+' '+sig
+    else:
+        print 'no change for '+slug+'+'+basename(path)
 
 def runCom():
     pass
