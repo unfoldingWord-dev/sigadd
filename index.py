@@ -6,6 +6,7 @@ import json
 import requests
 import time
 import urllib2
+import urllib
 import base64
 import shlex
 from flask import Flask, request, abort
@@ -15,7 +16,7 @@ app = Flask(__name__)
 api_root = '/var/www/vhosts/api.unfoldingword.org/httpdocs'
 api_base = 'https://api.unfoldingword.org'
 pki_base = 'https://pki.unfoldingword.org'
-working_dir = '.sigadd_temp'
+working_dir = '/dev/shm/sigadd_temp'
 
 
 @app.route("/", methods=['GET', 'POST'])
@@ -65,54 +66,55 @@ def checkSig(content_url, path, sig, slug):
     :param slug: the SI slug
     :return:
     '''
+    ts = time.time()
     vk_url = '{0}/si/{1}-vk.pem'.format(pki_base, slug)
     if slug == 'uW':
         vk_url = '{0}/{1}-vk.pem'.format(pki_base, slug)
+
+    # init working dir
+    if not os.path.exists(working_dir):
+        print 'initializing working directory in '+working_dir
+        os.makedirs(working_dir)
+
+    # download the si
+    vk_path = '{0}/{1}.pem'.format(working_dir, ts)
     try:
-        f = urllib2.urlopen(vk_url)
-        vk_content = f.read()
+        f = urllib.URLopener()
+        f.retrieve(vk_url, vk_path)
         f.close()
     except Exception as e:
         print e
         return False
 
-    if not os.path.exists(working_dir):
-        os.makedirs(working_dir)
-
-    ts = time.time()
-
-    keyf = open('{0}/{1}.pem'.format(working_dir, ts), 'w')
-    keyf.write(vk_content)
-    keyf.close()
-
-    sigf = open('{0}/{1}.sig'.format(working_dir, ts), 'w')
+    # prepare the content sig
+    sig_path = '{0}/{1}.sig'.format(working_dir, ts)
+    sigf = open(sig_path, 'w')
     sigf.write(base64.b64decode(sig))
     sigf.close()
 
     # download the content that was signed
-    contentf = open('{0}/{1}.content'.format(working_dir, ts), 'w')
+    content_path = '{0}/{1}.content'.format(working_dir, ts)
     try:
-        f = urllib2.urlopen(content_url)
-        contentf.write(f.read())
+        f = urllib.URLopener()
+        f.retrieve(content_url, content_path)
         f.close()
     except Exception as e:
         print e
         return False
-    contentf.close()
 
     # Use openssl to verify signature
-    command_str = 'openssl.exe dgst -sha384 -verify '+keyf.name+' -signature '+sigf.name+' '+contentf.name
+    command_str = 'openssl dgst -sha384 -verify '+vk_path+' -signature '+sig_path+' '+content_path
     command = shlex.split(command_str)
     com = Popen(command, shell=False, stdin=PIPE, stdout=PIPE, stderr=PIPE)
     out, err = com.communicate()
 
     # cleanup
-    os.remove(keyf.name)
-    os.remove(sigf.name)
-    os.remove(contentf.name)
+    os.remove(vk_path)
+    os.remove(sig_path)
+    os.remove(content_path)
 
-    if err:
-        print err
+    print err
+    print out
 
     return out.strip() == 'Verified OK'
 
@@ -162,7 +164,6 @@ def addSig(path, sig, slug):
     i = 0
     while i < len(sig_json):
         if sig_json[i].get('si') == slug:
-            print 'removed '+slug+' from list'
             sig_json.pop(i)
         else:
             # TRICKY: we don't increment when we pop because the list length is shorter by one
@@ -186,4 +187,12 @@ if __name__ == "__main__":
     if os.environ.get('USE_PROXYFIX', None) == 'true':
         from werkzeug.contrib.fixers import ProxyFix
         app.wsgi_app = ProxyFix(app.wsgi_app)
+
+    # show OpenSSL version
+    command_str = 'openssl version'
+    command = shlex.split(command_str)
+    com = Popen(command, shell=False, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    out, err = com.communicate()
+    print out
+
     app.run(host='0.0.0.0', port=port_number, debug=is_dev)
