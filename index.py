@@ -155,6 +155,10 @@ def addSig(path, sig, slug):
     sig_json = json.loads('[]')
     sig_path = '{0}{1}'.format(api_root, path).replace('json', 'sig')
 
+    if not os.path.exists(os.path.dirname(sig_path)):
+        print 'initializing signature root at '+os.path.dirname(sig_path)
+        os.makedirs(os.path.dirname(sig_path))
+
     # load existing sigs
     if os.path.exists(sig_path):
         old_f = open(sig_path, 'r')
