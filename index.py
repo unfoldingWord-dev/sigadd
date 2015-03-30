@@ -29,9 +29,10 @@ def index():
     elif request.method == 'POST':
         # load payload
         try:
-            payload = json.loads(request.values.get('data'))
+            payload = request.json['data']
         except Exception as e:
-            return json.dumps({'error':e.message})
+            return json.dumps({'error': e.message,
+                               'request': request.json})
 
         # read fields
         if 'slug' not in payload:
