@@ -58,7 +58,7 @@ def index():
             return json.dumps({'error': 'Sig does not match content.'})
 
         addSig(path, sig, slug)
-        return json.dumps({'ok':''})
+        return json.dumps({'ok':'Signature accepted.'})
 
 def checkSig(content_url, path, sig, slug):
     '''
