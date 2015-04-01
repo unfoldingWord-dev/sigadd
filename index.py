@@ -156,7 +156,7 @@ def addSig(path, sig, slug):
     sig_json = json.loads('[]')
     sig_path = '{0}{1}'.format(api_root, path)
     ft = [x for x in file_types if x in sig_path]
-    sig_path.replace(ft[0], '.sig')
+    sig_path = sig_path.replace(ft[0], '.sig')
 
     if not os.path.exists(os.path.dirname(sig_path)):
         print 'initializing signature root at '+os.path.dirname(sig_path)
