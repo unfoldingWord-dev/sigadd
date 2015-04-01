@@ -18,7 +18,7 @@ api_root = '/var/www/vhosts/api.unfoldingword.org/httpdocs'
 api_base = 'https://api.unfoldingword.org'
 pki_base = 'https://pki.unfoldingword.org'
 working_dir = '/dev/shm/sigadd_temp'
-
+file_types = ['.json', '.pdf', '.usfm']
 
 @app.route("/", methods=['GET', 'POST'])
 def index():
@@ -154,7 +154,9 @@ def addSig(path, sig, slug):
     :param slug: the SI slug
     '''
     sig_json = json.loads('[]')
-    sig_path = '{0}{1}'.format(api_root, path).replace('json', 'sig')
+    sig_path = '{0}{1}'.format(api_root, path)
+    ft = [x for x in file_types if x in sig_path]
+    sig_path.replace(ft[0], '.sig')
 
     if not os.path.exists(os.path.dirname(sig_path)):
         print 'initializing signature root at '+os.path.dirname(sig_path)
